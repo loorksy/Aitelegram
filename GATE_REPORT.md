@@ -22,7 +22,11 @@
 - بعد: أضيفت آلية redact للـ headers الحساسة وتم تجنّب تسجيل الـ payload الكامل للتحديثات.
 
 ## Changes summary
-- `prisma/schema.prisma`: إضافة PREVIEW/FlowStatus ودعم حقول مسودة للمراجعة.
+- `Dockerfile`, `docker-entrypoint.sh`: اعتماد Debian + تشغيل prisma generate/migrate قبل تشغيل السيرفر.
+- `docker-compose.yml`: env_file + DATABASE_URL ثابت + restart policies.
+- `prisma/migrations/000_init`: أول migration لإنشاء الجداول.
+- `prisma/migrations/migration_lock.toml`: قفل مزود قاعدة البيانات.
+- `prisma/schema.prisma`: PREVIEW/FlowStatus ودعم حقول مسودة للمراجعة.
 - `src/handlers/masterBot.handler.ts`: مرحلة المعاينة والتعديل قبل النشر + تفعيل publish بعد التأكيد.
 - `src/handlers/userBot.handler.ts`: منع الاستخدام لغير المالك قبل النشر.
 - `src/core/flowEngine.ts`: تحسين التنقل.
@@ -31,7 +35,6 @@
 - `src/core/aiBuilder.ts`: تحقق Zod للـ blueprint + fallback ثابت.
 - `src/services/*`: ضبط أنواع Json مع Prisma InputJsonValue.
 - `src/__tests__/*`: اختبارات التشفير، parser، و navigation.
-- `docker-compose.yml`: healthchecks و dependencies.
 - `README.md`, `.env.example`: توثيق الإعدادات ومرحلة Preview.
 - `.gitignore`: تجاهل node_modules/dist/.env/storage.
 

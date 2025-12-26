@@ -41,6 +41,7 @@ model User {
   updatedAt  DateTime @updatedAt
   bots       Bot[]
   sessions   Session[]
+  memory     UserMemory?
 }
 
 model Bot {
@@ -69,6 +70,9 @@ model Bot {
   groups          BotGroup[]
   interactions    UserInteraction[]
   analytics       BotAnalytics[]
+  memory          BotMemory?
+  agentRuns       AgentRun[]
+  abVariants      ABVariant[]
 
   @@index([ownerId])
   @@index([status])
@@ -231,4 +235,64 @@ model BotAnalytics {
   bot        Bot      @relation(fields: [botId], references: [id])
 
   @@unique([botId, date])
+}
+
+enum KnowledgeBaseType {
+  FAQ
+  TEMPLATE
+  POLICY
+  EXAMPLE
+}
+
+model UserMemory {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  preferences Json
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model BotMemory {
+  id        String   @id @default(uuid())
+  botId     String   @unique
+  profile   Json
+  updatedAt DateTime @updatedAt
+  bot       Bot      @relation(fields: [botId], references: [id])
+}
+
+model KnowledgeBaseItem {
+  id        String           @id @default(uuid())
+  type      KnowledgeBaseType
+  title     String
+  content   String
+  tags      String[]
+  language  String
+  updatedAt DateTime         @updatedAt
+}
+
+model AgentRun {
+  id           String   @id @default(uuid())
+  traceId      String
+  runId        String
+  userId       String
+  botId        String?
+  inputSummary String
+  outputs      Json
+  scores       Json?
+  createdAt    DateTime @default(now())
+  bot          Bot?     @relation(fields: [botId], references: [id])
+}
+
+model ABVariant {
+  id         String   @id @default(uuid())
+  botId      String
+  variantKey String
+  spec       Json
+  blueprint  Json
+  score      Int
+  chosen     Boolean @default(false)
+  createdAt  DateTime @default(now())
+  bot        Bot      @relation(fields: [botId], references: [id])
+
+  @@unique([botId, variantKey])
 }

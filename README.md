@@ -88,6 +88,31 @@ curl -X POST http://localhost:3010/links \\
    curl http://localhost:3010/health
    ```
 
+## Prisma bootstrap
+
+On container start, the entrypoint runs:
+
+1. `npx prisma migrate deploy` if migrations exist.
+2. Otherwise `npx prisma db push`.
+3. `npx prisma generate`.
+
+## Webhook setup
+
+Set master webhook with secret token:
+```bash
+curl -X POST "https://api.telegram.org/bot<MASTER_BOT_TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://api.lork.cloud/master/webhook","secret_token":"<WEBHOOK_SECRET>"}'
+```
+
+Test webhook secret:
+```bash
+curl -i -X POST https://api.lork.cloud/master/webhook \
+  -H "x-telegram-bot-api-secret-token: $WEBHOOK_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
 ## Environment variables
 
 - `MASTER_BOT_TOKEN`: Telegram token for the master bot.
@@ -109,6 +134,18 @@ curl -X POST http://localhost:3010/links \\
 4. User can preview and edit draft menus/texts in Preview Mode.
 5. On publish confirmation, BotFather token is collected if missing.
 6. Webhook is set to `https://api.lork.cloud/tg/{botId}/webhook`.
+
+## Agents pipeline (Pro)
+
+The server runs a multi-agent pipeline:
+
+1. Planner → plan JSON
+2. RAG → internal knowledge retrieval
+3. Validator → repair if needed
+4. A/B variants → score and pick winner
+5. Evaluator → quality score
+6. Preview → summary + A/B actions
+7. Publish gate → readiness checks before publish
 
 Generate a key:
 ```bash
