@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BotStatus {
+  DRAFT
+  PREVIEW
+  OFFLINE
+  PUBLISHED
+}
+
+enum SessionState {
+  IDLE
+  AWAITING_DESCRIPTION
+  AWAITING_TOKEN
+  AWAITING_REVIEW
+  USER_FLOW
+  OWNER_EDIT_WELCOME
+  OWNER_EDIT_MENU
+  OWNER_EDIT_BUTTON_SELECT
+  OWNER_EDIT_BUTTON_LABEL
+  OWNER_EDIT_BUTTON_ACTION
+  PREVIEW_MODE
+  CONFIRM_PUBLISH
+  OWNER_BROADCAST_NOW
+  OWNER_SCHEDULE_BROADCAST
+}
+
+model User {
+  id         String   @id @default(uuid())
+  email      String?  @unique
+  name       String?
+  telegramId String   @unique
+  username   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  bots       Bot[]
+  sessions   Session[]
+}
+
+model Bot {
+  id              String    @id @default(uuid())
+  name            String
+  description     String?
+  ownerId         String
+  status          BotStatus @default(DRAFT)
+  welcomeText     String?   @default("مرحبا! اختر من القائمة.")
+  menuLabels      Json?
+  draftWelcomeText String?
+  draftMenuLabels Json?
+  tokenCipherText String?
+  tokenIv         String?
+  tokenTag        String?
+  telegramUser    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  owner           User      @relation(fields: [ownerId], references: [id])
+  flows           Flow[]
+  sessions        Session[]
+  logs            Log[]
+  media           Media[]
+  links           ExternalLink[]
+  notifications   Notification[]
+  groups          BotGroup[]
+  interactions    UserInteraction[]
+  analytics       BotAnalytics[]
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+model Flow {
+  id        String   @id @default(uuid())
+  name      String
+  version   Int      @default(1)
+  blueprint Json
+  status    FlowStatus @default(DRAFT)
+  botId     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  bot       Bot      @relation(fields: [botId], references: [id])
+}
+
+enum FlowStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Session {
+  id        String       @id @default(uuid())
+  userId    String
+  botId     String?
+  chatId    String?
+  state     SessionState @default(IDLE)
+  data      Json?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  user      User         @relation(fields: [userId], references: [id])
+  bot       Bot?         @relation(fields: [botId], references: [id])
+
+  @@unique([botId, chatId])
+}
+
+model Log {
+  id        String   @id @default(uuid())
+  botId     String
+  level     String
+  message   String
+  meta      Json?
+  createdAt DateTime @default(now())
+  bot       Bot      @relation(fields: [botId], references: [id])
+
+  @@index([botId, createdAt])
+}
+
+model Media {
+  id         String   @id @default(uuid())
+  botId      String
+  type       String
+  filePath   String
+  mimeType   String
+  sizeMB     Float
+  uploadedBy String
+  usageCount Int      @default(0)
+  nodeIds    Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  bot        Bot      @relation(fields: [botId], references: [id])
+}
+
+model ExternalLink {
+  id         String   @id @default(uuid())
+  botId      String
+  nodeId     String
+  type       String
+  label      String
+  url        String
+  webAppUrl  String?
+  loginUrl   String?
+  clickCount Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  bot        Bot      @relation(fields: [botId], references: [id])
+}
+
+enum NotificationStatus {
+  PENDING
+  SCHEDULED
+  SENT
+  FAILED
+}
+
+enum ModerationMode {
+  MANUAL
+  AI_ASSISTED
+  AUTO
+}
+
+enum InteractionType {
+  START
+  BUTTON_CLICK
+  MENU_VIEW
+}
+
+model Notification {
+  id          String             @id @default(uuid())
+  botId       String
+  message     String
+  target      Json
+  status      NotificationStatus @default(PENDING)
+  scheduledAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  bot         Bot                @relation(fields: [botId], references: [id])
+}
+
+model BotGroup {
+  id             String         @id @default(uuid())
+  botId          String
+  chatId         String
+  title          String?
+  moderationMode ModerationMode @default(MANUAL)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  bot            Bot            @relation(fields: [botId], references: [id])
+  members        GroupMember[]
+
+  @@unique([botId, chatId])
+}
+
+model GroupMember {
+  id         String   @id @default(uuid())
+  groupId    String
+  telegramId String
+  warns      Int      @default(0)
+  banned     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  group      BotGroup @relation(fields: [groupId], references: [id])
+
+  @@unique([groupId, telegramId])
+}
+
+model UserInteraction {
+  id        String          @id @default(uuid())
+  botId     String
+  userId    String
+  type      InteractionType
+  nodeId    String?
+  createdAt DateTime        @default(now())
+  bot       Bot             @relation(fields: [botId], references: [id])
+
+  @@index([botId, createdAt])
+}
+
+model BotAnalytics {
+  id         String   @id @default(uuid())
+  botId      String
+  date       DateTime
+  startCount Int      @default(0)
+  clickCount Int      @default(0)
+  menuViews  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  bot        Bot      @relation(fields: [botId], references: [id])
+
+  @@unique([botId, date])
+}
