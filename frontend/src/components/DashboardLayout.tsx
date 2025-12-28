@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Users, Settings, LogOut, Bot, BarChart3, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Settings, LogOut, Bot, ShieldAlert } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface SidebarItemProps {
