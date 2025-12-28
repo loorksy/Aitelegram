@@ -1,20 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldCheck, Server, Cpu, Database, Activity } from 'lucide-react';
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { ChartCard } from '../components/ChartCard';
 import { cn } from '../lib/utils';
 
 // Mock system health data
 const mockHealthData = {
-    cpu: 45,
-    memory: 62,
-    uptime: '14d 2h 15m',
-    activeBots: 124,
-    version: '1.2.0',
-    history: Array.from({ length: 20 }, (_, i) => ({
-        time: \`\${10 + i}:00\`,
+  cpu: 45,
+  memory: 62,
+  uptime: '14d 2h 15m',
+  activeBots: 124,
+  version: '1.2.0',
+  history: Array.from({ length: 20 }, (_, i) => ({
+    time: `${10 + i}:00`,
     cpu: 30 + Math.random() * 30,
     memory: 50 + Math.random() * 20
   }))
@@ -73,26 +73,26 @@ export const AdminSystemPage = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <SystemCard 
-          icon={<Server size={24} />} 
-          label="وقت التشغيل (Uptime)" 
-          value={data.uptime} 
+        <SystemCard
+          icon={<Server size={24} />}
+          label="وقت التشغيل (Uptime)"
+          value={data.uptime}
         />
-        <SystemCard 
-          icon={<Cpu size={24} />} 
-          label="استهلاك المعالج" 
-          value={\`\${data.cpu.toFixed(1)}%\`} 
+        <SystemCard
+          icon={<Cpu size={24} />}
+          label="استهلاك المعالج"
+          value={`${data.cpu.toFixed(1)}%`}
           status={data.cpu > 80 ? 'warning' : 'normal'}
         />
-        <SystemCard 
-          icon={<Database size={24} />} 
-          label="استهلاك الذاكرة" 
-          value={\`\${data.memory.toFixed(1)}%\`} 
+        <SystemCard
+          icon={<Database size={24} />}
+          label="استهلاك الذاكرة"
+          value={`${data.memory.toFixed(1)}%`}
         />
-        <SystemCard 
-          icon={<Activity size={24} />} 
-          label="البوتات النشطة" 
-          value={data.activeBots} 
+        <SystemCard
+          icon={<Activity size={24} />}
+          label="البوتات النشطة"
+          value={data.activeBots}
         />
       </div>
 
@@ -102,26 +102,26 @@ export const AdminSystemPage = () => {
             <AreaChart data={data.history}>
               <defs>
                 <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
               <XAxis dataKey="time" stroke="#71717a" />
               <YAxis stroke="#71717a" domain={[0, 100]} />
               <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a', color: '#fff' }} />
-              <Area 
-                type="monotone" 
-                dataKey="cpu" 
-                stroke="#8b5cf6" 
-                fillOpacity={1} 
-                fill="url(#colorCpu)" 
+              <Area
+                type="monotone"
+                dataKey="cpu"
+                stroke="#8b5cf6"
+                fillOpacity={1}
+                fill="url(#colorCpu)"
               />
-              <Area 
-                type="monotone" 
-                dataKey="memory" 
-                stroke="#22c55e" 
-                fill="none" 
+              <Area
+                type="monotone"
+                dataKey="memory"
+                stroke="#22c55e"
+                fill="none"
                 strokeDasharray="5 5"
               />
             </AreaChart>
