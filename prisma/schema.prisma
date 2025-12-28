@@ -1,0 +1,466 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  OWNER
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  PENDING_APPROVAL
+  APPROVED
+  DENIED
+  SUSPENDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  TELEGRAM_STARS
+  MOCK
+}
+
+enum CreditTransactionType {
+  TOPUP
+  DEDUCTION
+  REFUND
+  ADMIN_ADJUSTMENT
+}
+
+enum BotStatus {
+  DRAFT
+  PREVIEW
+  OFFLINE
+  PUBLISHED
+  WEBHOOK_OK
+  WEBHOOK_FAILED
+}
+
+enum SessionState {
+  IDLE
+  AWAITING_DESCRIPTION
+  AWAITING_TOKEN
+  AWAITING_REVIEW
+  USER_FLOW
+  OWNER_EDIT_WELCOME
+  OWNER_EDIT_MENU
+  OWNER_EDIT_BUTTON_SELECT
+  OWNER_EDIT_BUTTON_LABEL
+  OWNER_EDIT_BUTTON_ACTION
+  PREVIEW_MODE
+  CONFIRM_PUBLISH
+  OWNER_BROADCAST_NOW
+  OWNER_SCHEDULE_BROADCAST
+}
+
+// ==================== MODELS ====================
+
+model User {
+  id                String       @id @default(uuid())
+  email             String?      @unique
+  name              String?
+  telegramId        String       @unique
+  username          String?
+  role              UserRole     @default(USER)
+  status            UserStatus   @default(PENDING_APPROVAL)
+  credits           Int          @default(0)
+  dailyCreditsUsed  Int          @default(0)
+  dailyCreditsLimit Int          @default(100)
+  lastCreditReset   DateTime     @default(now())
+  approvedAt        DateTime?
+  approvedBy        String?
+  deniedAt          DateTime?
+  deniedReason      String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  bots              Bot[]
+  sessions          Session[]
+  memory            UserMemory?
+  agentRuns         AgentRun[]
+  payments          Payment[]
+  creditTransactions CreditTransaction[]
+
+  @@index([status])
+  @@index([role])
+}
+
+model Bot {
+  id              String    @id @default(uuid())
+  name            String
+  description     String?
+  ownerId         String
+  status          BotStatus @default(DRAFT)
+  welcomeText     String?   @default("مرحبا! اختر من القائمة.")
+  menuLabels      Json?
+  draftWelcomeText String?
+  draftMenuLabels Json?
+  tokenCipherText String?
+  tokenIv         String?
+  tokenTag        String?
+  telegramUser    String?
+  telegramBotId   String?   // Telegram bot numeric ID
+  webhookUrl      String?   // Current webhook URL
+  webhookSecret   String?   // Current webhook secret (normalized)
+  webhookStatus   String?   // WEBHOOK_OK, WEBHOOK_FAILED, PENDING
+  webhookError    String?   // Last webhook error message
+  webhookCheckedAt DateTime? // Last webhook verification time
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  owner           User      @relation(fields: [ownerId], references: [id])
+  flows           Flow[]
+  sessions        Session[]
+  logs            Log[]
+  media           Media[]
+  links           ExternalLink[]
+  notifications   Notification[]
+  groups          BotGroup[]
+  interactions    UserInteraction[]
+  analytics       BotAnalytics[]
+  secrets         BotSecret[]
+  memory          BotMemory?
+  agentRuns       AgentRun[]
+  abVariants      ABVariant[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([webhookStatus])
+}
+
+model Flow {
+  id        String   @id @default(uuid())
+  name      String
+  version   Int      @default(1)
+  blueprint Json
+  status    FlowStatus @default(DRAFT)
+  botId     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  bot       Bot      @relation(fields: [botId], references: [id])
+}
+
+enum FlowStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Session {
+  id        String       @id @default(uuid())
+  userId    String
+  botId     String?
+  chatId    String?
+  state     SessionState @default(IDLE)
+  data      Json?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  user      User         @relation(fields: [userId], references: [id])
+  bot       Bot?         @relation(fields: [botId], references: [id])
+  messages  ChatMessage[]
+
+  @@unique([botId, chatId])
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  sessionId String
+  role      String   // 'user' | 'assistant' | 'system'
+  content   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  session   Session  @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId, createdAt])
+}
+
+model Log {
+  id        String   @id @default(uuid())
+  botId     String
+  level     String
+  message   String
+  meta      Json?
+  createdAt DateTime @default(now())
+  bot       Bot      @relation(fields: [botId], references: [id])
+
+  @@index([botId, createdAt])
+}
+
+model Media {
+  id         String   @id @default(uuid())
+  botId      String
+  type       String
+  filePath   String
+  mimeType   String
+  sizeMB     Float
+  uploadedBy String
+  usageCount Int      @default(0)
+  nodeIds    Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  bot        Bot      @relation(fields: [botId], references: [id])
+}
+
+model ExternalLink {
+  id         String   @id @default(uuid())
+  botId      String
+  nodeId     String
+  type       String
+  label      String
+  url        String
+  webAppUrl  String?
+  loginUrl   String?
+  clickCount Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  bot        Bot      @relation(fields: [botId], references: [id])
+}
+
+enum NotificationStatus {
+  PENDING
+  SCHEDULED
+  SENT
+  FAILED
+}
+
+enum ModerationMode {
+  MANUAL
+  AI_ASSISTED
+  AUTO
+}
+
+enum InteractionType {
+  START
+  BUTTON_CLICK
+  MENU_VIEW
+}
+
+enum AgentRunStatus {
+  SUCCESS
+  FAILED
+}
+
+model Notification {
+  id          String             @id @default(uuid())
+  botId       String
+  message     String
+  target      Json
+  status      NotificationStatus @default(PENDING)
+  scheduledAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  bot         Bot                @relation(fields: [botId], references: [id])
+}
+
+model BotGroup {
+  id             String         @id @default(uuid())
+  botId          String
+  chatId         String
+  title          String?
+  moderationMode ModerationMode @default(MANUAL)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  bot            Bot            @relation(fields: [botId], references: [id])
+  members        GroupMember[]
+
+  @@unique([botId, chatId])
+}
+
+model GroupMember {
+  id         String   @id @default(uuid())
+  groupId    String
+  telegramId String
+  warns      Int      @default(0)
+  banned     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  group      BotGroup @relation(fields: [groupId], references: [id])
+
+  @@unique([groupId, telegramId])
+}
+
+model UserInteraction {
+  id        String          @id @default(uuid())
+  botId     String
+  userId    String
+  type      InteractionType
+  nodeId    String?
+  createdAt DateTime        @default(now())
+  bot       Bot             @relation(fields: [botId], references: [id])
+
+  @@index([botId, createdAt])
+}
+
+model BotAnalytics {
+  id         String   @id @default(uuid())
+  botId      String
+  date       DateTime
+  startCount Int      @default(0)
+  clickCount Int      @default(0)
+  menuViews  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  bot        Bot      @relation(fields: [botId], references: [id])
+
+  @@unique([botId, date])
+}
+
+enum KnowledgeBaseType {
+  FAQ
+  TEMPLATE
+  POLICY
+  EXAMPLE
+}
+
+model UserMemory {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  preferences Json
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model BotMemory {
+  id        String   @id @default(uuid())
+  botId     String   @unique
+  profile   Json
+  updatedAt DateTime @updatedAt
+  bot       Bot      @relation(fields: [botId], references: [id])
+}
+
+model KnowledgeBaseItem {
+  id        String           @id @default(uuid())
+  type      KnowledgeBaseType
+  title     String
+  content   String
+  tags      String[]
+  language  String
+  updatedAt DateTime         @updatedAt
+}
+
+model AgentRun {
+  id              String        @id @default(uuid())
+  traceId         String
+  userId          String
+  botId           String?
+  intent          String
+  inputText       String
+  planJson        Json
+  blueprintJson   Json
+  validatorErrors Json?
+  status          AgentRunStatus
+  errorMessage    String?
+  latencyMs       Int
+  createdAt       DateTime      @default(now())
+  user            User          @relation(fields: [userId], references: [id])
+  bot             Bot?          @relation(fields: [botId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([botId, createdAt])
+}
+
+model ABVariant {
+  id         String   @id @default(uuid())
+  botId      String
+  variantKey String
+  spec       Json
+  blueprint  Json
+  score      Int
+  chosen     Boolean @default(false)
+  createdAt  DateTime @default(now())
+  bot        Bot      @relation(fields: [botId], references: [id])
+
+  @@unique([botId, variantKey])
+}
+
+model BotSecret {
+  id        String   @id @default(uuid())
+  botId     String
+  key       String   // e.g. "OPENAI_API_KEY", "STRIPE_SECRET"
+  value     String   // Encrypted value
+  iv        String   // Initialization vector for encryption
+  tag       String   // Auth tag for GCM
+  updatedAt DateTime @updatedAt
+  bot       Bot      @relation(fields: [botId], references: [id])
+
+  @@unique([botId, key])
+}
+
+
+// ==================== PAYMENT & CREDITS ====================
+
+model Payment {
+  id              String          @id @default(uuid())
+  userId          String
+  amount          Int             // Amount in credits
+  starsAmount     Int?            // Telegram Stars amount (if applicable)
+  provider        PaymentProvider @default(MOCK)
+  status          PaymentStatus   @default(PENDING)
+  providerPayload Json?           // Raw payload from payment provider
+  invoiceId       String?         // Telegram invoice ID
+  chargeId        String?         // Provider charge/transaction ID
+  errorMessage    String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  paidAt          DateTime?
+  user            User            @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@index([provider])
+}
+
+model CreditTransaction {
+  id          String                @id @default(uuid())
+  userId      String
+  amount      Int                   // Positive for topup, negative for deduction
+  type        CreditTransactionType
+  reason      String                // e.g., "pipeline_run", "topup_stars", "admin_adjustment"
+  balanceAfter Int                  // User balance after this transaction
+  referenceId String?               // e.g., AgentRun.id or Payment.id
+  createdAt   DateTime              @default(now())
+  user        User                  @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([type])
+}
+
+// ==================== SYSTEM CONFIG ====================
+
+model SystemConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// ==================== AUDIT LOGS ====================
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  action     String   // e.g., USER_APPROVED, PAYMENT_COMPLETED
+  actorId    String?  // User who performed the action
+  targetId   String?  // Target entity ID
+  targetType String?  // USER, BOT, PAYMENT, etc.
+  details    Json     @default("{}")
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([actorId])
+  @@index([targetId])
+  @@index([createdAt])
+}
