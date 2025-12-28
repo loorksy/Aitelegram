@@ -17,14 +17,9 @@ router.get('/bots/:id/stats', async (req, res) => {
         });
 
         // 2. Active Users (last 24h interactions)
-        // Need a way to track last interaction time in Session or AgentRun
-        // For now, let's use Session.createdAt as a proxy for "new users" 
-        // or we can count interactions if we had a detailed table.
-        // 'AgentRun' stores interactions.
         const activeLast24h = await prisma.agentRun.count({
             where: {
-                botId: id, // AgentRun doesn't have botId directly? Let's check schema.
-                // Wait, AgentRun DOES NOT have botId in some versions. I need to check schema.
+                botId: id,
                 createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
             }
         });
@@ -40,9 +35,6 @@ router.get('/bots/:id/stats', async (req, res) => {
     } catch (error) {
         res.status(500).json({ ok: false, error: 'Internal error' });
     }
-} catch (error) {
-    res.status(500).json({ ok: false, error: 'Internal error' });
-}
 });
 
 // Update bot content (manual editing)
